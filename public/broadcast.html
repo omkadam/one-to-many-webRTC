@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <video id="my-video" autoplay></video>
+
+    <script>
+async function init() {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    document.getElementById('my-video').srcObject = stream;
+    const peer = createPeer();
+    stream.getTracks().forEach(track => peer.addTrack(track, stream));
+}
+
+function createPeer() {
+    const peer = new RTCPeerConnection();
+    peer.onnegotiationneeded = () => handleonnegotiationneeded(peer);
+    return peer;
+}
+
+/**
+ * @param {RTCPeerConnection} peer
+*/
+async function handleonnegotiationneeded(peer) {
+    const offer = await peer.createOffer();
+    await peer.setLocalDescription(offer);
+    const payload = {
+        sdp: peer.localDescription
+    }
+    const response = await(await fetch('/broadcast', { 
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    })).json();
+
+    peer.setRemoteDescription(new RTCSessionDescription(response.sdp));
+}
+
+init();
+
+    </script>
+</body>
+</html>
